@@ -1,0 +1,202 @@
+{
+  "entities": {
+    "UserProfile": {
+      "title": "UserProfile",
+      "description": "User profile and session preferences for surveillance operator",
+      "type": "object",
+      "properties": {
+        "userId": {
+          "type": "string",
+          "description": "The unique Firebase Auth user ID",
+          "maxLength": 128
+        },
+        "email": {
+          "type": "string",
+          "description": "Operator authenticated Google email address",
+          "maxLength": 256
+        },
+        "displayName": {
+          "type": "string",
+          "description": "Display name of operator",
+          "maxLength": 128
+        },
+        "photoURL": {
+          "type": "string",
+          "description": "Profile avatar URL",
+          "maxLength": 512
+        },
+        "role": {
+          "type": "string",
+          "description": "User clearance role",
+          "enum": ["operator", "supervisor", "analyst"],
+          "maxLength": 32
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Creation timestamp"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Last update timestamp"
+        }
+      },
+      "required": ["userId", "email", "createdAt", "updatedAt"]
+    },
+    "TrackedSubjectRecord": {
+      "title": "TrackedSubjectRecord",
+      "description": "Persistent record of tracked subject target and sighting state",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique subject tracking ID",
+          "maxLength": 64
+        },
+        "userId": {
+          "type": "string",
+          "description": "Auth UID of the operator who created or tracks this target",
+          "maxLength": 128
+        },
+        "label": {
+          "type": "string",
+          "description": "Target callsign or description",
+          "maxLength": 128
+        },
+        "category": {
+          "type": "string",
+          "description": "Target category",
+          "enum": ["vehicle", "person", "cyclist", "all"],
+          "maxLength": 32
+        },
+        "subtype": {
+          "type": "string",
+          "description": "Vehicle or target subtype",
+          "maxLength": 64
+        },
+        "color": {
+          "type": "string",
+          "description": "Primary vehicle/target color",
+          "maxLength": 64
+        },
+        "height": {
+          "type": "string",
+          "description": "Profile height classification",
+          "maxLength": 64
+        },
+        "size": {
+          "type": "string",
+          "description": "Profile size classification",
+          "maxLength": 64
+        },
+        "status": {
+          "type": "string",
+          "description": "Surveillance status",
+          "enum": ["active", "intercepted", "lost", "archived"],
+          "maxLength": 32
+        },
+        "description": {
+          "type": "string",
+          "description": "Target notes and classification description",
+          "maxLength": 512
+        },
+        "lastCameraId": {
+          "type": "number",
+          "description": "CCTV camera ID where target was last sighted"
+        },
+        "lastCameraName": {
+          "type": "string",
+          "description": "Name of the last sighting camera",
+          "maxLength": 128
+        },
+        "lastSeen": {
+          "type": "string",
+          "description": "Timestamp string of last sighting",
+          "maxLength": 64
+        },
+        "sightingsCount": {
+          "type": "number",
+          "description": "Accumulated count of confirmed sightings"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Timestamp of creation"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Timestamp of last modification"
+        }
+      },
+      "required": ["id", "userId", "label", "category", "lastCameraId", "createdAt", "updatedAt"]
+    },
+    "IncidentReportRecord": {
+      "title": "IncidentReportRecord",
+      "description": "Archived incident and surveillance report export log",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique incident report reference ID",
+          "maxLength": 64
+        },
+        "userId": {
+          "type": "string",
+          "description": "Operator user ID who generated report",
+          "maxLength": 128
+        },
+        "trackingId": {
+          "type": "string",
+          "description": "Associated subject tracking ID",
+          "maxLength": 64
+        },
+        "subjectLabel": {
+          "type": "string",
+          "description": "Subject callsign label",
+          "maxLength": 128
+        },
+        "corridor": {
+          "type": "string",
+          "description": "Primary high-activity corridor",
+          "maxLength": 128
+        },
+        "cityId": {
+          "type": "string",
+          "description": "Metropolitan network city ID",
+          "maxLength": 64
+        },
+        "sightingsCount": {
+          "type": "number",
+          "description": "Number of sightings documented"
+        },
+        "summary": {
+          "type": "string",
+          "description": "Brief narrative summary of the incident",
+          "maxLength": 1024
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Creation timestamp"
+        }
+      },
+      "required": ["id", "userId", "trackingId", "subjectLabel", "cityId", "createdAt"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": "UserProfile",
+      "description": "Operator profile details and preferences"
+    },
+    "/users/{userId}/tracked_subjects/{subjectId}": {
+      "schema": "TrackedSubjectRecord",
+      "description": "Operator saved tracked subjects and trajectory history"
+    },
+    "/users/{userId}/incident_reports/{reportId}": {
+      "schema": "IncidentReportRecord",
+      "description": "Operator exported incident reports and surveillance logs"
+    }
+  }
+}

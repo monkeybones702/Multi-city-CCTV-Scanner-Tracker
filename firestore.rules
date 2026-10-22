@@ -1,0 +1,194 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Global default-deny safety net
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Connection testing endpoint for applet initial boot
+    match /test/connection {
+      allow read: if true;
+    }
+
+    // Hardened primitive helper functions
+    function isValidId(id) {
+      return id is string && id.size() > 0 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    function isSignedIn() {
+      return request.auth != null && request.auth.uid != null;
+    }
+
+    function isAdmin() {
+      return isSignedIn() &&
+        request.auth.token.email == 'nastydad702@gmail.com' &&
+        request.auth.token.email_verified == true;
+    }
+
+    // ----------------------------------------------------
+    // Entity Validation Helpers
+    // ----------------------------------------------------
+    function isValidUser(data) {
+      return (data.keys().hasAll(['uid', 'email', 'role']) || data.keys().hasAll(['userId', 'email', 'role'])) &&
+        data.keys().hasOnly(['uid', 'userId', 'email', 'displayName', 'photoURL', 'role', 'createdAt', 'updatedAt']) &&
+        (('uid' in data) ? (data.uid is string && data.uid.size() > 0 && data.uid.size() <= 128) : true) &&
+        (('userId' in data) ? (data.userId is string && data.userId.size() > 0 && data.userId.size() <= 128) : true) &&
+        data.email is string && data.email.size() > 0 && data.email.size() <= 256 &&
+        data.role in ['operator', 'investigator', 'admin', 'supervisor', 'analyst'] &&
+        (!('displayName' in data) || (data.displayName is string && data.displayName.size() <= 128)) &&
+        (!('photoURL' in data) || (data.photoURL is string && data.photoURL.size() <= 1024)) &&
+        (!('createdAt' in data) || (data.createdAt is string && data.createdAt.size() <= 64) || data.createdAt is timestamp) &&
+        (!('updatedAt' in data) || (data.updatedAt is string && data.updatedAt.size() <= 64) || data.updatedAt is timestamp);
+    }
+
+    function isValidTrackedSubject(data) {
+      return data.keys().hasAll(['id', 'userId', 'label', 'category']) &&
+        data.keys().hasOnly([
+          'id', 'userId', 'label', 'category', 'subtype', 'status', 'description', 'color',
+          'height', 'size', 'firstSeen', 'lastSeen', 'lastCameraId',
+          'lastCameraName', 'isFollowingLive', 'sightingsCount', 'createdAt', 'updatedAt'
+        ]) &&
+        data.id is string && data.id.size() > 0 && data.id.size() <= 128 &&
+        data.userId is string && data.userId.size() > 0 && data.userId.size() <= 128 &&
+        data.label is string && data.label.size() > 0 && data.label.size() <= 200 &&
+        data.category in ['vehicle', 'person', 'cyclist', 'all'] &&
+        (!('subtype' in data) || (data.subtype is string && data.subtype.size() <= 64)) &&
+        (!('status' in data) || (data.status in ['active', 'intercepted', 'lost', 'archived'])) &&
+        (!('description' in data) || (data.description is string && data.description.size() <= 1000)) &&
+        (!('color' in data) || (data.color is string && data.color.size() <= 64)) &&
+        (!('height' in data) || (data.height is string && data.height.size() <= 64)) &&
+        (!('size' in data) || (data.size is string && data.size.size() <= 64)) &&
+        (!('firstSeen' in data) || (data.firstSeen is string && data.firstSeen.size() <= 64)) &&
+        (!('lastSeen' in data) || (data.lastSeen is string && data.lastSeen.size() <= 64)) &&
+        (!('lastCameraId' in data) || data.lastCameraId is number) &&
+        (!('lastCameraName' in data) || (data.lastCameraName is string && data.lastCameraName.size() <= 256)) &&
+        (!('isFollowingLive' in data) || data.isFollowingLive is bool) &&
+        (!('sightingsCount' in data) || (data.sightingsCount is number && data.sightingsCount >= 0)) &&
+        (!('createdAt' in data) || (data.createdAt is string && data.createdAt.size() <= 64) || data.createdAt is timestamp) &&
+        (!('updatedAt' in data) || (data.updatedAt is string && data.updatedAt.size() <= 64) || data.updatedAt is timestamp);
+    }
+
+    function isValidIncidentReport(data) {
+      return data.keys().hasAll(['id', 'userId']) &&
+        data.keys().hasOnly([
+          'id', 'userId', 'title', 'trackingId', 'subjectId', 'subjectLabel', 'corridor', 'cityId',
+          'sightingsCount', 'status', 'summary', 'generatedAt', 'createdAt'
+        ]) &&
+        data.id is string && data.id.size() > 0 && data.id.size() <= 128 &&
+        data.userId is string && data.userId.size() > 0 && data.userId.size() <= 128 &&
+        (!('title' in data) || (data.title is string && data.title.size() <= 256)) &&
+        (!('trackingId' in data) || (data.trackingId is string && data.trackingId.size() <= 128)) &&
+        (!('subjectId' in data) || (data.subjectId is string && data.subjectId.size() <= 128)) &&
+        (!('corridor' in data) || (data.corridor is string && data.corridor.size() <= 128)) &&
+        (!('cityId' in data) || (data.cityId is string && data.cityId.size() <= 64)) &&
+        (!('status' in data) || (data.status in ['active', 'archived', 'closed'])) &&
+        (!('subjectLabel' in data) || (data.subjectLabel is string && data.subjectLabel.size() <= 200)) &&
+        (!('sightingsCount' in data) || (data.sightingsCount is number && data.sightingsCount >= 0)) &&
+        (!('summary' in data) || (data.summary is string && data.summary.size() <= 2000)) &&
+        (!('generatedAt' in data) || (data.generatedAt is string && data.generatedAt.size() <= 64)) &&
+        (!('createdAt' in data) || (data.createdAt is string && data.createdAt.size() <= 64) || data.createdAt is timestamp);
+    }
+
+    // ----------------------------------------------------
+    // Collection Match Blocks
+    // ----------------------------------------------------
+
+    // User accounts and nested personal collections
+    match /users/{userId} {
+      allow get: if isSignedIn() && (request.auth.uid == userId || isAdmin());
+      allow list: if isAdmin();
+      allow create: if isSignedIn() &&
+        isValidId(userId) &&
+        request.auth.uid == userId &&
+        isValidUser(incoming()) &&
+        (('uid' in incoming()) ? incoming().uid == request.auth.uid : true) &&
+        (('userId' in incoming()) ? incoming().userId == request.auth.uid : true) &&
+        (incoming().role != 'admin' || isAdmin());
+      allow update: if isSignedIn() &&
+        isValidId(userId) &&
+        (request.auth.uid == userId || isAdmin()) &&
+        isValidUser(incoming()) &&
+        (('uid' in incoming() && 'uid' in existing()) ? incoming().uid == existing().uid : true) &&
+        (isAdmin() || incoming().role == existing().role);
+      allow delete: if isAdmin();
+
+      // Nested tracked subjects
+      match /tracked_subjects/{subjectId} {
+        allow get, list: if isSignedIn() && (request.auth.uid == userId || isAdmin());
+        allow create: if isSignedIn() &&
+          isValidId(subjectId) &&
+          request.auth.uid == userId &&
+          isValidTrackedSubject(incoming()) &&
+          incoming().userId == request.auth.uid;
+        allow update: if isSignedIn() &&
+          isValidId(subjectId) &&
+          (request.auth.uid == userId || isAdmin()) &&
+          isValidTrackedSubject(incoming()) &&
+          incoming().userId == userId;
+        allow delete: if isSignedIn() &&
+          isValidId(subjectId) &&
+          (request.auth.uid == userId || isAdmin());
+      }
+
+      // Nested incident reports (immutable log)
+      match /incident_reports/{reportId} {
+        allow get, list: if isSignedIn() && (request.auth.uid == userId || isAdmin());
+        allow create: if isSignedIn() &&
+          isValidId(reportId) &&
+          request.auth.uid == userId &&
+          isValidIncidentReport(incoming()) &&
+          incoming().userId == request.auth.uid;
+        allow update: if false; // immutable audit record
+        allow delete: if isSignedIn() &&
+          isValidId(reportId) &&
+          (request.auth.uid == userId || isAdmin());
+      }
+    }
+
+    // Root-level tracked surveillance subjects (fallback compatibility)
+    match /tracked_subjects/{subjectId} {
+      allow get, list: if isSignedIn() &&
+        (resource.data.userId == request.auth.uid || isAdmin());
+      allow create: if isSignedIn() &&
+        isValidId(subjectId) &&
+        isValidTrackedSubject(incoming()) &&
+        incoming().userId == request.auth.uid;
+      allow update: if isSignedIn() &&
+        isValidId(subjectId) &&
+        (existing().userId == request.auth.uid || isAdmin()) &&
+        isValidTrackedSubject(incoming()) &&
+        incoming().userId == existing().userId;
+      allow delete: if isSignedIn() &&
+        isValidId(subjectId) &&
+        (existing().userId == request.auth.uid || isAdmin());
+    }
+
+    // Root-level incident documentation & reports (fallback compatibility)
+    match /incident_reports/{reportId} {
+      allow get, list: if isSignedIn() &&
+        (resource.data.userId == request.auth.uid || isAdmin());
+      allow create: if isSignedIn() &&
+        isValidId(reportId) &&
+        isValidIncidentReport(incoming()) &&
+        incoming().userId == request.auth.uid;
+      allow update: if isSignedIn() &&
+        isValidId(reportId) &&
+        (existing().userId == request.auth.uid || isAdmin()) &&
+        isValidIncidentReport(incoming()) &&
+        incoming().userId == existing().userId;
+      allow delete: if isSignedIn() &&
+        isValidId(reportId) &&
+        (existing().userId == request.auth.uid || isAdmin());
+    }
+  }
+}
